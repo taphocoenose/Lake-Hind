@@ -1,3 +1,12 @@
+
+# Lasted Edited by Ryan Breslawski on Nov 5, 2019
+# email: rbreslawski@smu.edu
+# 
+# This script was last edited in R 3.6.1 on a Windows 10 machine
+
+# Fix randomization for reproducibility
+set.seed(785876478)
+
 #---------------------#
 # Fit age depth model #
 #---------------------#
@@ -21,23 +30,24 @@ AgeDepthModel <- Bchronology(ages=dates$Mu,
                              ids=dates$LabNo,
                              outlierProbs=dates$OutlierProb,
                              predictPositions=seq(0, 70, by=0.5),
-                             jitterPositions=TRUE)
+                             jitterPositions=TRUE,
+                             iterations=1e5, burn=2e4, thin=80)
 
 
 # Extract age samples at unit boundaries
 BoundaryPositions <- which(AgeDepthModel$predictPositions %in% UnitBounds)
 BoundarySamples <- AgeDepthModel$thetaPredict[,BoundaryPositions]
 
-# Find maximum age densities for both modelled boundaries and radiocarbon
-# dates. This will be used to scale densities for plotting
-maxbound <- max(sapply(1:ncol(BoundarySamples), function(i){
-  max(density(BoundarySamples[,i])$y)
+# Find maximum age densities for both modelled dates and unmodelled
+# radiocarbon dates. This will be used to scale densities for plotting
+maxcal <- max(sapply(1:nrow(dates), function(i){
+  max(AgeDepthModel$calAges[[i]]$densities)
 }))
 maxdate <- max(sapply(1:nrow(dates), function(i){
   max(density(AgeDepthModel$theta[,i])$y)
 }))
-densscale <- max(c(maxbound, maxdate))/3
-rm(maxbound, maxdate)
+densscale <- max(c(maxcal, maxdate))/10
+rm(maxcal, maxdate)
 
 # Convert unit bound samples to long format densities for plotting
 BoundarySamples <- lapply(1:ncol(BoundarySamples), function(i){
@@ -131,28 +141,28 @@ p1 <- ggplot()+
            hjust=0, vjust=1, size=5)+
   annotate("segment", x=rep(-Inf, 2), xend=rep(Inf, 2),
            y=UnitBounds[c(3,4)], yend=UnitBounds[c(3,4)],
-           size=1, color="deepskyblue2", linetype="dashed")+
-  annotate("text", label=paste(BoundaryInts, "BP (95% intervla)"), 
-           y=UnitBounds+c(0,0,-1,1,0,0), x=rep(19000,6), 
-           hjust=0, size=2.5, vjust=c(0.5, 0.5, 0, 1, 0.5, 0.5),
-           color=c("blue4", "blue4", "darkred", "darkred",
-                   "blue4", "blue4"))+
+           size=0.7, color="deepskyblue2", linetype="dashed")+
+  annotate("text", label="Unit boundary ages (95% intervals)", 
+           x=18100, y=-2, vjust=0, size=3, color="blue4")+
+  annotate("text", label=paste(BoundaryInts, "cal yr BP"), 
+           y=UnitBounds+c(0,0,-.5,.5,0,0), x=rep(18100,6), 
+           size=2.7, vjust=c(0.5, 0.5, 0, 1, 0.5, 0.5),
+           color=rep("blue4", 6))+
   geom_polygon(data=PredInts, aes(x=x, y=y, group=Qu), alpha=0.04)+
   geom_ribbon(data=DateSamples, aes(group=id, ymin=ymin, 
                                     ymax=dens, x=date),
-              alpha=0.2, fill="purple")+
+              alpha=0.35, fill="purple")+
   geom_ribbon(data=DateSamples2, aes(group=id, ymin=ymin, 
                                     ymax=dens, x=date),
-              alpha=0.8, fill="purple")+
+              alpha=0.75, fill="purple")+
   annotate("text", label=c("Subunit B2", "Upper Subunit B1", 
-                           "YDB", "Lower Subunit B1", 
+                           "Middle Subunit B1", "Lower Subunit B1", 
                            "Unit A"), 
-           x=rep(20600, 5), y=c(20, 24, 31.5, 41, 45),
-           color=c("blue4", "blue4", "darkred",
-                   "blue4", "blue4"),
-           hjust=0)+
+           x=rep(21000, 5), y=c(21, 23, 31.5, 42, 44),
+           color=rep("blue4", 5),
+           hjust=0, size=3.2)+
   scale_x_reverse(expand=c(0,0))+
-  scale_y_reverse(expand=c(0.01, 0), breaks=UnitBounds)+
+  scale_y_reverse(expand=c(0.01, 0), breaks=UnitBounds, limits=c(69, -3))+
   labs(x="Cal yr BP", y="Depth (cm)")+
   theme(panel.background=element_blank(),
         panel.grid=element_blank(), 
@@ -176,39 +186,51 @@ Date_Dens2 <- DateSamples2[which(DateSamples2$ymin > 30 &
 Date_Dens2$dens <- abs(Date_Dens2$dens - Date_Dens2$ymin)
 Date_Dens2$ymin <- 0
 
+# Obtain 95% interval for UCIAMS-29317. First, sample 1e6
+# dates from the Bchron probability mass output. Then
+# calculate the quantiles.
+date_quantiles <- AgeDepthModel$calAges[[which(dates$LabNo=="UCIAMS-29317")]]
+date_quantiles <- sample(date_quantiles$ageGrid, 1e6, 
+                         prob=date_quantiles$densities, replace=TRUE)
+date_quantiles <- quantile(date_quantiles, probs=c(0.975, 0.025))
+date_quantiles <- paste0("UCIAMS-29371 ", date_quantiles[1], "-",
+                         date_quantiles[2], " cal yr BP  (95% interval)")
+
 ymax <- max(Date_Dens$dens)
 
 p2 <- ggplot(data=NULL, aes(ymin=0, ymax=dens, x=date))+
-  annotate("rect", ymin=0, ymax=ymax*1.2, xmin=12735, xmax=12835,
+  annotate("rect", ymin=0, ymax=Inf, xmin=12735, xmax=12835,
            fill="orange", alpha=0.4)+
   annotate("text", label="b", x=12855, y=ymax*1.15, 
            hjust=0, vjust=1, size=5)+
-  annotate("text", label="Hypothesized", color="orange", 
-           x=12825, y=ymax*0.6, angle=90)+
-  annotate("text", label="Younger Dryas", color="orange", 
-           x=12805, y=ymax*0.6, angle=90)+
-  annotate("text", label="Boundary", color="orange", 
-           x=12785, y=ymax*0.6, angle=90)+
-  annotate("text", label="12835-12735", color="orange", 
-           x=12765, y=ymax*0.6, angle=90)+
-  annotate("text", label="cal yr BP", color="orange", 
-           x=12745, y=ymax*0.6, angle=90)+
-  annotate("text", label=paste("YDB bounds:", BoundaryInts[4], "to",
-                                BoundaryInts[3], "cal yr BP (95% intervals)"),
-           color="blue", x=12500, y=ymax*1.05, vjust=0, size=3)+
-  annotate("text", label="Modelled ages (95% intervals)", x=12320, 
-           y=ymax*0.9, size=3, color="purple")+
+  annotate("text", label="Hypothesized", color="blue4", 
+           x=12730, y=ymax, size=3, hjust=0)+
+  annotate("text", label="Younger Dryas", color="blue4", 
+           x=12730, y=ymax*0.9, size=3, hjust=0)+
+  annotate("text", label="Boundary", color="blue4", 
+           x=12730, y=ymax*0.8, size=3, hjust=0)+
+  annotate("text", label="12835-12735", color="blue4", 
+           x=12730, y=ymax*0.7, size=3, hjust=0)+
+  annotate("text", label="cal yr BP", color="blue4", 
+           x=12730, y=ymax*0.6, size=3, hjust=0)+
+  annotate("text", label=paste("Middle Subunit B1 bounds:", 
+                               BoundaryInts[4], "to",
+                                BoundaryInts[3], 
+                               "cal yr BP (95% intervals)"),
+           color="blue", x=12480, y=ymax*1.05, vjust=0, size=3)+
   annotate("text", label=paste(dates$LabNo[13], ModelledInts[13], 
-                               "cal yr BP"), x=12320, 
-           y=ymax*0.74, size=3, color="purple", vjust=0)+
+                               "cal yr BP (95% interval)"), x=12550, 
+           y=ymax*(-0.05), size=2.2, color="purple", vjust=1, hjust=0)+
   annotate("text", label=paste(dates$LabNo[14], ModelledInts[14], 
-                               "cal yr BP"), x=12320, 
-           y=ymax*0.72, size=3, color="purple", vjust=1)+
+                               "cal yr BP (95% interval)"), x=12500, 
+           y=ymax*(-0.18), size=2.2, color="purple", vjust=1, hjust=0)+
+  annotate("text", label=date_quantiles, x=12790, y=ymax*(-0.05), 
+           size=2.2, color="purple", vjust=1, hjust=0, alpha=0.6)+
   geom_ribbon(data=Boundary_Dens, aes(group=id), fill="blue", alpha=0.5)+
   geom_ribbon(data=Date_Dens2, aes(group=id), fill="purple", alpha=0.5)+
   geom_ribbon(data=Date_Dens, aes(group=id), fill="purple", alpha=0.2)+
   scale_x_reverse(expand=c(0,0))+
-  scale_y_continuous(expand=c(0.01, 0))+
+  scale_y_continuous(expand=c(0.01, 0), limits=c(ymax*(-0.29), ymax*1.2))+
   labs(x="Cal yr BP")+
   theme(panel.background=element_blank(),
         panel.grid=element_blank(), 
