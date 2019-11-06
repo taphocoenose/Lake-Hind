@@ -1,5 +1,5 @@
 
-# Lasted Edited by Ryan Breslawski on Nov 5, 2019
+# Lasted Edited by Ryan Breslawski on Nov 6, 2019
 # email: rbreslawski@smu.edu
 # 
 # This script was last edited in R 3.6.1 on a Windows 10 machine
@@ -21,7 +21,8 @@ UnitBounds <- c(0, 22, 30, 33, 43, 68)
 BoundaryNames <- c("B2 to B3", "B1 to B2", "Sand", "YDB proxies",
                    "A2 to B1", "A1 to A2")
 
-# Fit age-depth model
+# Fit age-depth model. Increase iterations above 1000 default
+# to improve stability of modelled ages across simulation runs.
 AgeDepthModel <- Bchronology(ages=dates$Mu,
                              ageSds=dates$SE,
                              positions=dates$Depth,
@@ -31,7 +32,7 @@ AgeDepthModel <- Bchronology(ages=dates$Mu,
                              outlierProbs=dates$OutlierProb,
                              predictPositions=seq(0, 70, by=0.5),
                              jitterPositions=TRUE,
-                             iterations=1e5, burn=2e4, thin=80)
+                             iterations=3e5, burn=4e3, thin=8)
 
 
 # Extract age samples at unit boundaries
@@ -204,15 +205,15 @@ p2 <- ggplot(data=NULL, aes(ymin=0, ymax=dens, x=date))+
   annotate("text", label="b", x=12855, y=ymax*1.15, 
            hjust=0, vjust=1, size=5)+
   annotate("text", label="Hypothesized", color="blue4", 
-           x=12730, y=ymax, size=3, hjust=0)+
+           x=12830, y=ymax, size=3, hjust=0)+
   annotate("text", label="Younger Dryas", color="blue4", 
-           x=12730, y=ymax*0.9, size=3, hjust=0)+
+           x=12830, y=ymax*0.9, size=3, hjust=0)+
   annotate("text", label="Boundary", color="blue4", 
-           x=12730, y=ymax*0.8, size=3, hjust=0)+
+           x=12830, y=ymax*0.8, size=3, hjust=0)+
   annotate("text", label="12835-12735", color="blue4", 
-           x=12730, y=ymax*0.7, size=3, hjust=0)+
+           x=12830, y=ymax*0.7, size=3, hjust=0)+
   annotate("text", label="cal yr BP", color="blue4", 
-           x=12730, y=ymax*0.6, size=3, hjust=0)+
+           x=12830, y=ymax*0.6, size=3, hjust=0)+
   annotate("text", label=paste("Middle Subunit B1 bounds:", 
                                BoundaryInts[4], "to",
                                 BoundaryInts[3], 
