@@ -4,14 +4,16 @@
 # 
 # This script was last edited in R 3.6.1 on a Windows 10 machine
 
+library(Bchron)
+library(ggplot2)
+library(patchwork)
+
 # Fix randomization for reproducibility
 set.seed(785876478)
 
 #---------------------#
 # Fit age depth model #
 #---------------------#
-
-library(Bchron)
 
 # Import data
 dates <- read.csv("LakeHindDates.csv", header=TRUE, 
@@ -129,10 +131,8 @@ ModelledInts <- sapply(1:ncol(AgeDepthModel$theta), function(x){
 #---------------------#
 #---- Plot results ---#
 #---------------------#
-library(ggplot2)
-library(patchwork)
 
-
+# Age-depth model plot
 p1 <- ggplot()+
   annotate("rect", xmin=rep(-Inf, 3), xmax=rep(Inf, 3),
            ymin=UnitBounds[c(2, 5, 6)], ymax=UnitBounds[c(1, 2, 5)], 
@@ -197,23 +197,25 @@ date_quantiles <- quantile(date_quantiles, probs=c(0.975, 0.025))
 date_quantiles <- paste0("UCIAMS-29371 ", date_quantiles[1], "-",
                          date_quantiles[2], " cal yr BP  (95% interval)")
 
+# Y-axis max for plot 2
 ymax <- max(Date_Dens$dens)
 
+# Middle Subunit B1 plot
 p2 <- ggplot(data=NULL, aes(ymin=0, ymax=dens, x=date))+
   annotate("rect", ymin=0, ymax=Inf, xmin=12735, xmax=12835,
            fill="orange", alpha=0.4)+
   annotate("text", label="b", x=12855, y=ymax*1.15, 
            hjust=0, vjust=1, size=5)+
-  annotate("text", label="Hypothesized", color="blue4", 
-           x=12830, y=ymax, size=3, hjust=0)+
-  annotate("text", label="Younger Dryas", color="blue4", 
-           x=12830, y=ymax*0.9, size=3, hjust=0)+
-  annotate("text", label="Boundary", color="blue4", 
-           x=12830, y=ymax*0.8, size=3, hjust=0)+
-  annotate("text", label="12835-12735", color="blue4", 
-           x=12830, y=ymax*0.7, size=3, hjust=0)+
-  annotate("text", label="cal yr BP", color="blue4", 
-           x=12830, y=ymax*0.6, size=3, hjust=0)+
+  annotate("text", label="Hypothesized", color="orange3", 
+           x=12833, y=ymax, size=3.5, hjust=0)+
+  annotate("text", label="Younger Dryas", color="orange3", 
+           x=12833, y=ymax*0.8, size=3.5, hjust=0)+
+  annotate("text", label="Boundary", color="orange3", 
+           x=12833, y=ymax*0.6, size=3.5, hjust=0)+
+  annotate("text", label="12835-12735", color="orange3", 
+           x=12833, y=ymax*0.4, size=3.5, hjust=0)+
+  annotate("text", label="cal yr BP", color="orange3", 
+           x=12833, y=ymax*0.2, size=3.5, hjust=0)+
   annotate("text", label=paste("Middle Subunit B1 bounds:", 
                                BoundaryInts[4], "to",
                                 BoundaryInts[3], 
@@ -242,4 +244,5 @@ p2 <- ggplot(data=NULL, aes(ymin=0, ymax=dens, x=date))+
         axis.text.y=element_blank(),
         axis.title.y=element_blank())
 
+# Plot combined panels
 p1 + p2 + plot_layout(ncol=1, heights=c(1, 0.3))
